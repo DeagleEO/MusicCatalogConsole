@@ -126,6 +126,7 @@ namespace MusicCatalogConsole
         }
     }
 
+
     public class AddReleaseForm : Form
     {
         private DatabaseHelper db = new DatabaseHelper();
