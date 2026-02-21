@@ -62,50 +62,100 @@ namespace MusicCatalogConsole
         private void LoadReleases()
         {
             var releases = db.GetAllReleases();
+            dataGrid.DataSource = null; // Сброс
             dataGrid.DataSource = releases;
 
-            // Скрываем служебные колонки
-            if (dataGrid.Columns.Contains("Id"))
-                dataGrid.Columns["Id"].Visible = false;
-            if (dataGrid.Columns.Contains("ArtistId"))
-                dataGrid.Columns["ArtistId"].Visible = false;
+            // Настраиваем колонки
+            if (dataGrid.Columns.Count > 0)
+            {
+                // Скрываем служебные колонки
+                if (dataGrid.Columns.Contains("Id"))
+                    dataGrid.Columns["Id"].Visible = false;
+                if (dataGrid.Columns.Contains("ArtistId"))
+                    dataGrid.Columns["ArtistId"].Visible = false;
+
+                // Переименовываем колонки для красоты
+                if (dataGrid.Columns.Contains("ArtistName"))
+                {
+                    dataGrid.Columns["ArtistName"].HeaderText = "Исполнитель";
+                    dataGrid.Columns["ArtistName"].Width = 150;
+                }
+                if (dataGrid.Columns.Contains("Title"))
+                {
+                    dataGrid.Columns["Title"].HeaderText = "Название";
+                    dataGrid.Columns["Title"].Width = 200;
+                }
+                if (dataGrid.Columns.Contains("Year"))
+                {
+                    dataGrid.Columns["Year"].HeaderText = "Год";
+                    dataGrid.Columns["Year"].Width = 60;
+                }
+                if (dataGrid.Columns.Contains("MediaType"))
+                {
+                    dataGrid.Columns["MediaType"].HeaderText = "Тип носителя";
+                    dataGrid.Columns["MediaType"].Width = 100;
+                }
+                if (dataGrid.Columns.Contains("Description"))
+                {
+                    dataGrid.Columns["Description"].HeaderText = "Описание";
+                    dataGrid.Columns["Description"].Width = 250;
+                }
+
+            }
         }
 
         private void BtnAdd_Click(object sender, EventArgs e)
         {
-            // ИСПРАВЬТЕ ЭТОТ МЕТОД НА ТАКОЙ:
             using (var addForm = new AddReleaseForm())
             {
                 if (addForm.ShowDialog() == DialogResult.OK)
                 {
-                    // Создаем исполнителя
-                    var artist = new Models.Artist
+                    // ПОЛУЧАЕМ ИМЯ ИСПОЛНИТЕЛЯ ИЗ ФОРМЫ
+                    string artistName = addForm.GetArtistName();
+
+                    // ПРОВЕРЯЕМ, ЕСТЬ ЛИ УЖЕ ТАКОЙ ИСПОЛНИТЕЛЬ
+                    var existingArtists = db.GetAllArtists();
+                    var existingArtist = existingArtists.FirstOrDefault(a => a.Name == artistName);
+
+                    int artistId;
+
+                    if (existingArtist != null)
                     {
-                        Name = addForm.GetArtistName()
-                    };
-                    db.AddArtist(artist);
-
-                    // Получаем ID добавленного исполнителя
-                    var artists = db.GetAllArtists();
-                    var lastArtist = artists.LastOrDefault();
-
-                    if (lastArtist != null)
-                    {
-                        // Создаем релиз
-                        var release = new Models.Release
-                        {
-                            ArtistId = lastArtist.Id,
-                            Title = addForm.GetTitle(),
-                            Year = addForm.GetYear(),
-                            MediaType = addForm.GetMediaType()
-                        };
-
-                        db.AddRelease(release);
-                        LoadReleases();
+                        // Если исполнитель уже есть - используем его ID
+                        artistId = existingArtist.Id;
                     }
+                    else
+                    {
+                        // Если исполнителя нет - создаем нового
+                        var newArtist = new Models.Artist
+                        {
+                            Name = artistName
+                        };
+                        db.AddArtist(newArtist);
+
+                        // Получаем ID нового исполнителя
+                        var artists = db.GetAllArtists();
+                        var lastArtist = artists.LastOrDefault();
+                        if (lastArtist == null) return;
+                        artistId = lastArtist.Id;
+                    }
+
+                    // СОЗДАЕМ РЕЛИЗ
+                    var release = new Models.Release
+                    {
+                        ArtistId = artistId,
+                        Title = addForm.GetTitle(),
+                        Year = addForm.GetYear(),
+                        MediaType = addForm.GetMediaType(),
+                        Description = addForm.GetDescription()
+                    };
+
+                    db.AddRelease(release);
+                    LoadReleases();
                 }
             }
         }
+    
 
         private void BtnDelete_Click(object sender, EventArgs e)
         {

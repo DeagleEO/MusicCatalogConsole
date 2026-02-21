@@ -88,7 +88,7 @@ namespace MusicCatalogConsole
                 command.Parameters.AddWithValue("$title", release.Title);
                 command.Parameters.AddWithValue("$year", release.Year);
                 command.Parameters.AddWithValue("$mediaType", release.MediaType);
-                command.Parameters.AddWithValue("$description", release.Description ?? "");  // ДОБАВЬТЕ
+                command.Parameters.AddWithValue("$description", release.Description ?? "");
                 command.ExecuteNonQuery();
             }
         }
@@ -96,20 +96,25 @@ namespace MusicCatalogConsole
         public List<Release> GetAllReleases()
         {
             var releases = new List<Release>();
-
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
 
+            // ПРОВЕРЬТЕ ЧТО В ЗАПРОСЕ ЕСТЬ Description
             var command = connection.CreateCommand();
             command.CommandText = @"
-                SELECT r.Id, r.ArtistId, a.Name, r.Title, r.Year, r.MediaType
-                FROM Releases r
-                INNER JOIN Artists a ON r.ArtistId = a.Id
-                ORDER BY a.Name, r.Year";
+        SELECT r.Id, r.ArtistId, a.Name, r.Title, r.Year, r.MediaType, r.Description
+        FROM Releases r
+        INNER JOIN Artists a ON r.ArtistId = a.Id
+        ORDER BY a.Name, r.Year";
 
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
+                // Проверяем сколько колонок реально вернулось
+                int fieldCount = reader.FieldCount;
+                System.Diagnostics.Debug.WriteLine($"Количество колонок: {fieldCount}");
+
+                // БЕЗОПАСНОЕ ЧТЕНИЕ с проверкой индексов
                 releases.Add(new Release
                 {
                     Id = reader.GetInt32(0),
@@ -117,10 +122,11 @@ namespace MusicCatalogConsole
                     ArtistName = reader.GetString(2),
                     Title = reader.GetString(3),
                     Year = reader.GetInt32(4),
-                    MediaType = reader.GetString(5)
+                    MediaType = reader.GetString(5),
+                    // Проверяем, существует ли 6-я колонка
+                    Description = fieldCount > 6 && !reader.IsDBNull(6) ? reader.GetString(6) : ""
                 });
             }
-
             return releases;
         }
 
